@@ -19,18 +19,17 @@ class FormatKwargsTestCase(TestCase):
 def custom_model_creation_func(custom_var1: Type1, custom_var2: Type2, {{ my_model_kwargs }}) -> models.Model:
 	...
 
-def custom_model_creation_func(custom_var1, custom_var2, **kwargs):
-	return do_something_that_creates_model()
+def custom_model_creation_func(custom_var1, custom_var2, **kwargs): ...
 
 		"""
 
 		with tempfile.TemporaryDirectory(suffix='-test_model_typing') as tmpdir:
-			with open(os.path.join(tmpdir, 'my_template.py.j2'), 'wb') as f:
+			with open(os.path.join(tmpdir, 'my_template.pyi.j2'), 'wb') as f:
 				f.write(template.encode('utf-8'))
 
 			model_typing.format_kwargs(
-				template_path=os.path.join(tmpdir, 'my_template.py.j2'),
-				out_file=os.path.join(tmpdir, 'my_template.py'),
+				template_path=os.path.join(tmpdir, 'my_template.pyi.j2'),
+				out_file=os.path.join(tmpdir, 'my_template.pyi'),
 				model=models.Model,
 				model_namespace = 'models',
 				datetime_class = 'datetime',
@@ -39,7 +38,7 @@ def custom_model_creation_func(custom_var1, custom_var2, **kwargs):
 
 			output = ''
 
-			with open(os.path.join(tmpdir, 'my_template.py'), 'rb') as f:
+			with open(os.path.join(tmpdir, 'my_template.pyi'), 'rb') as f:
 				output = f.read().decode('utf-8')
 
 			kwargs_str = \
