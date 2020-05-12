@@ -31,9 +31,8 @@ def custom_model_creation_func(custom_var1, custom_var2, **kwargs): ...
 				template_path=os.path.join(tmpdir, 'my_template.pyi.j2'),
 				out_file=os.path.join(tmpdir, 'my_template.pyi'),
 				model=models.Model,
-				model_namespace = 'models',
-				datetime_class = 'datetime',
-				kwarg_var_name = 'my_model_kwargs',
+				namespace_mapping={'tests.bast1aan.django_extra.test_model_typing.models': 'models', 'datetime': ''},
+				kwarg_var_name='my_model_kwargs',
 			)
 
 			output = ''
@@ -43,7 +42,7 @@ def custom_model_creation_func(custom_var1, custom_var2, **kwargs): ...
 
 			kwargs_str = \
 				'id:int=None, title:str=None, slug:str=None, description:str=None, poster:models.Upload=None, ' \
-				'og_image:models.Upload=None, create_at:datetime=None, updated_at:datetime=None'
+				'og_image:models.Upload=None, created_at:datetime=None, updated_at:datetime=None'
 
 			self.assertIn(kwargs_str, output)
 
@@ -51,7 +50,7 @@ def custom_model_creation_func(custom_var1, custom_var2, **kwargs): ...
 				'@overload\n' \
 				'def custom_model_creation_func(custom_var1: Type1, custom_var2: Type2, ' \
 				'id:int=None, title:str=None, slug:str=None, description:str=None, poster:models.Upload=None, ' \
-				'og_image:models.Upload=None, create_at:datetime=None, updated_at:datetime=None' \
+				'og_image:models.Upload=None, created_at:datetime=None, updated_at:datetime=None' \
 				') -> models.Model:'
 
 			self.assertIn(code_line, output)

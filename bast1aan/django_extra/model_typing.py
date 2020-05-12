@@ -98,11 +98,47 @@ NATIVE_DJANGO_TYPES: Tuple[Tuple[str, Tuple[Type[models.Field], ...]], ...] = (
 )
 
 
-def format_kwargs(*args, **kwargs):
+def format_kwargs(
+		template_path:str,
+		out_file:str,
+		model:Type[models.Model],
+		kwarg_var_name:str,
+		namespace_mapping: Dict[str, str],
+		):
 	"""
 		Formats a python code template to insert valid keyword arguments generated
 		from a django model.
+
+		:param template_path: full path to Jinja2 template
+		:param out_file: full path to output file where processed template will be written to
+		:param model: Django model to inspect the kwargs from
+		:param kwarg_var_name: variable name in the template where the kwargs to be in place
+		:param namespace_mapping: mappings of namespaces of found types.
 	"""
+	fields: Dict[str, models.Field] = {f.name: f for f in model._meta.fields}
+	fields_str = {}
+	for name, field in fields.items():
+		if isinstance(field, RelatedField):
+			module, clazz, many = _get_relation_by_field(field)
+			if module in namespace_mapping:
+				module = namespace_mapping[module]
+			fieldstr = '.'.join([module, clazz]) if module else clazz
+			if many:
+				fieldstr = 'List[{}]'.format(fieldstr)
+			fields_str[name] = fieldstr
+		else:
+			fieldstr = _get_type_by_field(field.__class__)
+			try:
+				module, clazz = fieldstr.rsplit('.', maxsplit=1)
+				if module in namespace_mapping:
+					module = namespace_mapping[module]
+				fields_str[name] = '.'.join([module, clazz]) if module else clazz
+			except ValueError:
+				fields_str[name] = fieldstr
+
+	kwargs_str = ', '.join(('{}:{}=None'.format(name, field) for name, field in fields_str.items()))
+
+	_render_template(template_path, out_file, **{kwarg_var_name: kwargs_str})
 
 
 def _get_type_by_field(field:Type[models.Field]) -> str:
