@@ -1,17 +1,11 @@
 import os
 import tempfile
 
-from django.test import TestCase
+from django.test import SimpleTestCase
 from . import models
 from bast1aan.django_extra import model_typing
 
-class FormatKwargsTestCase(TestCase):
-	def test_can_instantiate_test_models(self):
-		model = models.Model.objects.create(title='Title', slug='slug', description='Description')
-		self.assertIsInstance(model, models.Model)
-		self.assertEqual(model.title, 'Title')
-		self.assertEqual(model.slug, 'slug')
-		self.assertEqual(model.description, 'Description')
+class FormatKwargsTestCase(SimpleTestCase):
 
 	def test_creates_kwargs_from_model(self):
 		template = """
