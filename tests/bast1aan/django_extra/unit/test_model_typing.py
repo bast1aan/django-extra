@@ -141,3 +141,35 @@ class GetTypeByFieldTestCase(unittest.TestCase):
 
 		typestr = model_typing._get_type_by_field(field)
 		self.assertEqual(typestr, 'django.db.models.fields.files.FieldFile')
+
+
+class GetRelationByFieldTestCase(unittest.TestCase):
+
+	class RelatedField:
+		class RelatedModel:
+			pass
+
+		related_model = RelatedModel
+
+		def __init__(self, many_to_many=False, many_to_one=False):
+			self.many_to_many = many_to_many
+			self.many_to_one = many_to_one
+
+	def test_get_relation_by_field__one(self):
+
+		module, clazz, many = model_typing._get_relation_by_field(self.RelatedField())
+
+		self.assertEqual(module, self.__module__)
+		self.assertEqual(clazz, 'GetRelationByFieldTestCase.RelatedField.RelatedModel')
+		self.assertFalse(many)
+
+	def test_get_relation_by_field__m2m(self):
+
+		_, _, many = model_typing._get_relation_by_field(self.RelatedField(many_to_many=True))
+
+		self.assertTrue(many)
+
+	def test_get_relation_by_field__m2o(self):
+		_, _, many = model_typing._get_relation_by_field(self.RelatedField(many_to_one=True))
+
+		self.assertTrue(many)

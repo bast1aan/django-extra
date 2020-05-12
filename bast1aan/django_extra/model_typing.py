@@ -3,8 +3,11 @@
 """
 from typing import Dict, Tuple, Type
 
+import inspect
+
 import jinja2
 from django.db import models
+from django.db.models.fields.related import RelatedField
 
 
 NATIVE_DJANGO_TYPES: Tuple[Tuple[str, Tuple[Type[models.Field], ...]], ...] = (
@@ -137,3 +140,12 @@ def _render_template(template:str, destination:str, *args, **kwargs):
 		f.write(result.encode('utf-8'))
 	finally:
 		f.close()
+
+
+def _get_relation_by_field(field:RelatedField) -> Tuple[str, str, bool]:
+	""" Return information about relation.
+	:param field: RelatedField instance
+	:return: module name, class name, and if it a many relation or not.
+	"""
+	model_module = inspect.getmodule(field.related_model)
+	return (model_module.__name__, field.related_model.__qualname__, field.many_to_many or field.many_to_one)
