@@ -169,3 +169,11 @@ class GetKwargStrForModelTestCase(SimpleTestCase):
 			'og_image:models.Upload=None, created_at:datetime=None, updated_at:datetime=None'
 
 		self.assertEqual(kwarg_str, kwargs_str_expected)
+
+
+class GetModulesForModelKwargsTestCase(SimpleTestCase):
+	def test_get_modules_for_model_kwargs(self):
+		imports = model_typing.get_modules_for_model_kwargs(model=models.Model)
+
+		self.assertIn('tests.bast1aan.django_extra.test_model_typing.models', imports)
+		self.assertIn('datetime', imports)
