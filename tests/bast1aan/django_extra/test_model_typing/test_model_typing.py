@@ -155,3 +155,17 @@ def custom_upload_creation_func(custom_var1, custom_var2, **kwargs): ...
 				') -> models.Upload:'
 
 			self.assertIn(code_line_upload, output)
+
+
+class GetKwargStrForModelTestCase(SimpleTestCase):
+	def test_get_kwarg_str_for_model(self):
+		kwarg_str = model_typing.get_kwarg_str_for_model(
+			model=models.Model,
+			namespace_mapping={'tests.bast1aan.django_extra.test_model_typing.models': 'models', 'datetime': ''},
+		)
+
+		kwargs_str_expected = \
+			'id:int=None, title:str=None, slug:str=None, description:str=None, poster:models.Upload=None, ' \
+			'og_image:models.Upload=None, created_at:datetime=None, updated_at:datetime=None'
+
+		self.assertEqual(kwarg_str, kwargs_str_expected)

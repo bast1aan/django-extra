@@ -187,6 +187,40 @@ def format_template_for_model_kwargs(
 	_render_template(template_path, out_file, **template_vars)
 
 
+def get_kwarg_str_for_model(model: Type[models.Model], namespace_mapping: Dict[str, str]) -> str:
+	"""
+		Generates a valid creation kwarg string from a django model.
+
+		:param model: Django model to inspect the kwargs from
+		:param namespace_mapping: mappings of namespaces of found types.
+		:return: string with keyword arguments
+	"""
+
+	fields: Dict[str, models.Field] = {f.name: f for f in model._meta.fields}
+	fields_str = {}
+	for name, field in fields.items():
+		if isinstance(field, RelatedField):
+			module, clazz, many = _get_relation_by_field(field)
+			if module in namespace_mapping:
+				module = namespace_mapping[module]
+			fieldstr = '.'.join([module, clazz]) if module else clazz
+			if many:
+				fieldstr = 'List[{}]'.format(fieldstr)
+			fields_str[name] = fieldstr
+		else:
+			fieldstr = _get_type_by_field(field.__class__)
+			try:
+				module, clazz = fieldstr.rsplit('.', maxsplit=1)
+				if module in namespace_mapping:
+					module = namespace_mapping[module]
+				fields_str[name] = '.'.join([module, clazz]) if module else clazz
+			except ValueError:
+				fields_str[name] = fieldstr
+
+	kwargs_str = ', '.join(('{}:{}=None'.format(name, field) for name, field in fields_str.items()))
+	return kwargs_str
+
+
 def _get_type_by_field(field:Type[models.Field]) -> str:
 	""" Give type by Django field """
 	for type_str, django_types in NATIVE_DJANGO_TYPES:
