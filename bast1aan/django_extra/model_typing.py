@@ -177,6 +177,31 @@ def get_kwarg_str_for_model(model: Type[models.Model], namespace_mapping: Dict[s
 	return kwargs_str
 
 
+def get_modules_for_model_kwargs(model: Type[models.Model]) -> [str]:
+	"""
+	Generate list of modules needed for the creation kwargs of this model
+
+	:param model:  Django model to inspect the kwargs from
+	:return: set of modules
+	"""
+	fields: Dict[str, models.Field] = {f.name: f for f in model._meta.fields}
+	modules = set()
+	for name, field in fields.items():
+		if isinstance(field, RelatedField):
+			module, clazz, many = _get_relation_by_field(field)
+			modules.add(module)
+			if many:
+				modules.add('typing')  # todo: how to extract 'List' from this?
+		else:
+			fieldstr = _get_type_by_field(field.__class__)
+			try:
+				module, clazz = fieldstr.rsplit('.', maxsplit=1)
+				modules.add(module)
+			except ValueError:
+				# types without module, probably build-in types like str
+				pass
+	return modules
+
 def _get_type_by_field(field:Type[models.Field]) -> str:
 	""" Give type by Django field """
 	for type_str, django_types in NATIVE_DJANGO_TYPES:
