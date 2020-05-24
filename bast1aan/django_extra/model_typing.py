@@ -131,46 +131,48 @@ def format_template(
 		"""
 		nonlocal modules, kwarg_strs
 
-		model_class: Type[models.Model] = None
-		try:
-			# compute fqn
-			module_str, clazz = model.rsplit('.', maxsplit=1)
-			if module_str in namespace_mapping_reverse:
-				module_str = namespace_mapping_reverse[module_str]
+		if model not in kwarg_strs:
+			model_class: Type[models.Model] = None
 			try:
-				module = importlib.import_module(module_str)
-				model_class = getattr(module, clazz)
-			except ImportError:
-				raise RuntimeError('Error: module {} not found'.format(module_str))
-			except AttributeError:
-				raise RuntimeError(
-					'Error: symbol {symbol} cannot be found in module {module}'.format(
-						symbol=model, module=module_str
+				# compute fqn
+				module_str, clazz = model.rsplit('.', maxsplit=1)
+				if module_str in namespace_mapping_reverse:
+					module_str = namespace_mapping_reverse[module_str]
+				try:
+					module = importlib.import_module(module_str)
+					model_class = getattr(module, clazz)
+				except ImportError:
+					raise RuntimeError('Error: module {} not found'.format(module_str))
+				except AttributeError:
+					raise RuntimeError(
+						'Error: symbol {symbol} cannot be found in module {module}'.format(
+							symbol=model, module=module_str
+						)
 					)
-				)
-			if not isinstance(model_class, type) or not issubclass(model_class, models.Model):
-				raise RuntimeError(
-					'Error: symbol {symbol} from module {module} is not a subclass of django.db.models.Model'.format(
-						symbol=model, module=module_str
+				if not isinstance(model_class, type) or not issubclass(model_class, models.Model):
+					raise RuntimeError(
+						'Error: symbol {symbol} from module {module} is not a subclass of django.db.models.Model'.format(
+							symbol=model, module=module_str
+						)
 					)
-				)
-		except ValueError:
-			# no module mentioned in symbol. Find it.
-			for module_str, alias in namespace_mapping.items():
-				if not alias:
-					try:
-						module = importlib.import_module(module_str)
-					except RuntimeError:
-						raise RuntimeError('Error: module {} not found'.format(module_str))
-					_model_class = getattr(module, model, None)
-					if isinstance(_model_class, type) and issubclass(_model_class, models.Model):
-						model_class = _model_class
-						break
-			if not model_class:
-				raise RuntimeError('Model {model} cannot be found within given namespaces')
+			except ValueError:
+				# no module mentioned in symbol. Find it.
+				for module_str, alias in namespace_mapping.items():
+					if not alias:
+						try:
+							module = importlib.import_module(module_str)
+						except RuntimeError:
+							raise RuntimeError('Error: module {} not found'.format(module_str))
+						_model_class = getattr(module, model, None)
+						if isinstance(_model_class, type) and issubclass(_model_class, models.Model):
+							model_class = _model_class
+							break
+				if not model_class:
+					raise RuntimeError('Model {model} cannot be found within given namespaces')
 
-		modules |= get_modules_for_model_kwargs(model_class)
-		kwarg_strs[model] = get_kwarg_str_for_model(model_class, namespace_mapping)
+			modules |= get_modules_for_model_kwargs(model_class)
+			kwarg_strs[model] = get_kwarg_str_for_model(model_class, namespace_mapping)
+
 		return kwarg_strs[model]
 
 	# First run, so all kwargs() are executed and modules are found
