@@ -121,11 +121,12 @@ def format_template(
 	if namespace_mapping is None:
 		namespace_mapping = dict()
 
-	def define_namespace_mapping(mapping: Dict[str, str]):
+	def define_namespace_mapping(mapping: Dict[str, str]) -> str:
 		""" Define namespace wrapping from within template """
 		nonlocal namespace_mapping, namespace_mapping_reverse
 		namespace_mapping.update(mapping)
 		namespace_mapping_reverse = dict(zip(namespace_mapping.values(), namespace_mapping.keys()))
+		return ''
 
 	modules:Set[str] = set()
 
@@ -195,7 +196,7 @@ def format_template(
 
 	# Second final run, including imports
 	_render_template(template_path, out_file,
-		kwargs=kwargs, imports=imports, define_namespace_mapping=lambda _: None)
+		kwargs=kwargs, imports=imports, define_namespace_mapping=lambda _: '')
 
 
 def format_kwargs(

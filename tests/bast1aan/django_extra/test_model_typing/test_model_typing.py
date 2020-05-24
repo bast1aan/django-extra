@@ -662,3 +662,8 @@ def custom_upload_creation_func(custom_var1, custom_var2, **kwargs): ...
 			import2 = 'import datetime\n'
 
 			self.assertNotIn(import2, output)
+
+			self.assertFalse(output.startswith('None'),
+				'define_namespace_mapping() should not leave anything in the template')
+			self.assertFalse(output.startswith(' '),
+				'define_namespace_mapping() should not leave anything in the template')
