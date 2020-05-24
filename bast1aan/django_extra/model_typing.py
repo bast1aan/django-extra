@@ -118,16 +118,6 @@ def format_template(
 			in these namespaces.
 	"""
 
-	# # import namespace mappings
-	# modules = {}
-	# for module_str, alias in namespace_mapping.items():
-	# 	modules[module_str] = importlib.import_module(module_str)
-	#
-	# found_models = [item for item in dir(model_module) if isinstance(item, models.Model)]
-	#
-	# for model in found_models:
-	# 	modules += get_modules_for_model_kwargs(model)
-
 	modules:Set[str] = set()
 
 	kwarg_strs:Dict[str, str] = dict()
