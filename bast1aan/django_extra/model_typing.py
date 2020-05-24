@@ -1,7 +1,8 @@
 """
 	Module for generating python static typing information from django models
 """
-from typing import Dict, Tuple, Type
+import importlib
+from typing import Dict, Tuple, Type, Set, Optional
 
 import inspect
 
@@ -96,6 +97,105 @@ NATIVE_DJANGO_TYPES: Tuple[Tuple[str, Tuple[Type[models.Field], ...]], ...] = (
 		)
 	)
 )
+
+
+def format_template(
+		template_path: str,
+		out_file: str,
+		# model_module: ModuleType,
+		namespace_mapping: Dict[str, str],
+	):
+	"""
+		Formats a python code template to insert valid keyword arguments generated from django models.
+		Template can use two variables:
+		- `kwargs()` function, accepting one arugment being valid django model for that template,
+			returning full keyword arguments for that model
+		- The `imports` variable, for additional imports required for the generated keyword argument type
+			annotations
+
+		:param template_path: full path to Jinja2 template
+		:param out_file: full path to output file where processed template will be written to
+		:param model_module: module where Django models reside used in template
+		:param namespace_mapping: mappings of namespaces used in the template. Django models must resided somewhere
+			in these namespaces.
+	"""
+
+	# # import namespace mappings
+	# modules = {}
+	# for module_str, alias in namespace_mapping.items():
+	# 	modules[module_str] = importlib.import_module(module_str)
+	#
+	# found_models = [item for item in dir(model_module) if isinstance(item, models.Model)]
+	#
+	# for model in found_models:
+	# 	modules += get_modules_for_model_kwargs(model)
+
+	modules:Set[str] = set()
+
+	kwarg_strs:Dict[str, str] = dict()
+
+	namespace_mapping_reverse = dict(zip(namespace_mapping.values(), namespace_mapping.keys()))
+
+	def kwargs(model: str) -> str:
+		""" Returns expanded kwarg string for model.
+		:param model: valid model identifier. Must be found within given namespace.
+		:raises RuntimeError: if a model cannot be found or a namespace cannot be imported
+		"""
+		nonlocal modules, kwarg_strs
+
+		model_class: Type[models.Model] = None
+		try:
+			# compute fqn
+			module_str, clazz = model.rsplit('.', maxsplit=1)
+			if module_str in namespace_mapping_reverse:
+				module_str = namespace_mapping_reverse[module_str]
+			try:
+				module = importlib.import_module(module_str)
+				model_class = getattr(module, clazz)
+			except ImportError:
+				raise RuntimeError('Error: module {} not found'.format(module_str))
+			except AttributeError:
+				raise RuntimeError(
+					'Error: symbol {symbol} cannot be found in module {module}'.format(
+						symbol=model, module=module_str
+					)
+				)
+			if not isinstance(model_class, type) or not issubclass(model_class, models.Model):
+				raise RuntimeError(
+					'Error: symbol {symbol} from module {module} is not a subclass of django.db.models.Model'.format(
+						symbol=model, module=module_str
+					)
+				)
+		except ValueError:
+			# no module mentioned in symbol. Find it.
+			for module_str, alias in namespace_mapping.items():
+				if not alias:
+					try:
+						module = importlib.import_module(module_str)
+					except RuntimeError:
+						raise RuntimeError('Error: module {} not found'.format(module_str))
+					_model_class = getattr(module, model, None)
+					if isinstance(_model_class, type) and issubclass(_model_class, models.Model):
+						model_class = _model_class
+						break
+			if not model_class:
+				raise RuntimeError('Model {model} cannot be found within given namespaces')
+
+		modules |= get_modules_for_model_kwargs(model_class)
+		kwarg_strs[model] = get_kwarg_str_for_model(model_class, namespace_mapping)
+		return kwarg_strs[model]
+
+	# First run, so all kwargs() are executed and modules are found
+	_render_template(template_path, None, kwargs=kwargs, imports='')
+
+	# don't import the ones already mentioned in namespace_mapping
+	modules -= namespace_mapping.keys()
+
+	# create imports string
+	imports = '\n'.join('import {}'.format(module) for module in modules)
+
+	# Second final run, including imports
+	_render_template(template_path, out_file, kwargs=kwargs, imports=imports)
 
 
 def format_kwargs(
@@ -209,12 +309,12 @@ def _get_type_by_field(field:Type[models.Field]) -> str:
 			return type_str
 
 
-def _render_template(template:str, destination:str, *args, **kwargs):
+def _render_template(template:str, destination:Optional[str], *args, **kwargs):
 	"""
 		Render Jinja2 template.
 
 	:param template: full path to template
-	:param destination: full path to destination
+	:param destination: full path to destination. Can be None for a dry run.
 	:param args: arguments to be passed to template
 	:param kwargs: keyword arguments passed to template
 	:return: Nothing
@@ -231,12 +331,13 @@ def _render_template(template:str, destination:str, *args, **kwargs):
 
 	result = template.render(*args, **kwargs)
 
-	f = open(destination, 'wb')
+	if destination:
+		f = open(destination, 'wb')
 
-	try:
-		f.write(result.encode('utf-8'))
-	finally:
-		f.close()
+		try:
+			f.write(result.encode('utf-8'))
+		finally:
+			f.close()
 
 
 def _get_relation_by_field(field:RelatedField) -> Tuple[str, str, bool]:
