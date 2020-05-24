@@ -102,7 +102,6 @@ NATIVE_DJANGO_TYPES: Tuple[Tuple[str, Tuple[Type[models.Field], ...]], ...] = (
 def format_template(
 		template_path: str,
 		out_file: str,
-		# model_module: ModuleType,
 		namespace_mapping: Dict[str, str],
 	):
 	"""
@@ -115,7 +114,6 @@ def format_template(
 
 		:param template_path: full path to Jinja2 template
 		:param out_file: full path to output file where processed template will be written to
-		:param model_module: module where Django models reside used in template
 		:param namespace_mapping: mappings of namespaces used in the template. Django models must resided somewhere
 			in these namespaces.
 	"""
