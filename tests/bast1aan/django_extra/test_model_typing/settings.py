@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'bast1aan.django_extra',
     'tests.bast1aan.django_extra.test_model_typing',
 ]
 
