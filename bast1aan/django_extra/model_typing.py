@@ -102,7 +102,7 @@ NATIVE_DJANGO_TYPES: Tuple[Tuple[str, Tuple[Type[models.Field], ...]], ...] = (
 def format_template(
 		template_path: str,
 		out_file: str,
-		namespace_mapping: Dict[str, str],
+		namespace_mapping: Dict[str, str] = None,
 	):
 	"""
 		Formats a python code template to insert valid keyword arguments generated from django models.
@@ -117,6 +117,15 @@ def format_template(
 		:param namespace_mapping: mappings of namespaces used in the template. Django models must resided somewhere
 			in these namespaces.
 	"""
+
+	if namespace_mapping is None:
+		namespace_mapping = dict()
+
+	def define_namespace_mapping(mapping: Dict[str, str]):
+		""" Define namespace wrapping from within template """
+		nonlocal namespace_mapping, namespace_mapping_reverse
+		namespace_mapping.update(mapping)
+		namespace_mapping_reverse = dict(zip(namespace_mapping.values(), namespace_mapping.keys()))
 
 	modules:Set[str] = set()
 
@@ -176,7 +185,7 @@ def format_template(
 		return kwarg_strs[model]
 
 	# First run, so all kwargs() are executed and modules are found
-	_render_template(template_path, None, kwargs=kwargs, imports='')
+	_render_template(template_path, None, kwargs=kwargs, imports='', define_namespace_mapping=define_namespace_mapping)
 
 	# don't import the ones already mentioned in namespace_mapping
 	modules -= namespace_mapping.keys()
@@ -185,7 +194,8 @@ def format_template(
 	imports = '\n'.join('import {}'.format(module) for module in modules)
 
 	# Second final run, including imports
-	_render_template(template_path, out_file, kwargs=kwargs, imports=imports)
+	_render_template(template_path, out_file,
+		kwargs=kwargs, imports=imports, define_namespace_mapping=lambda _: None)
 
 
 def format_kwargs(
@@ -336,4 +346,4 @@ def _get_relation_by_field(field:RelatedField) -> Tuple[str, str, bool]:
 	:return: module name, class name, and if it a many relation or not.
 	"""
 	model_module = inspect.getmodule(field.related_model)
-	return (model_module.__name__, field.related_model.__qualname__, field.many_to_many or field.many_to_one)
+	return model_module.__name__, field.related_model.__qualname__, field.many_to_many or field.many_to_one
