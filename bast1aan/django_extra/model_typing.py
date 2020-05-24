@@ -106,7 +106,9 @@ def format_template(
 	):
 	"""
 		Formats a python code template to insert valid keyword arguments generated from django models.
-		Template can use two variables:
+		Template can use three variables:
+		- `define_namespace_mapping()` function, declaring or updating namespace mapping.
+			See the documentation about the namespace parameter of this function.
 		- `kwargs()` function, accepting one arugment being valid django model for that template,
 			returning full keyword arguments for that model
 		- The `imports` variable, for additional imports required for the generated keyword argument type
@@ -114,15 +116,20 @@ def format_template(
 
 		:param template_path: full path to Jinja2 template
 		:param out_file: full path to output file where processed template will be written to
-		:param namespace_mapping: mappings of namespaces used in the template. Django models must resided somewhere
-			in these namespaces.
+		:param namespace_mapping: optional mappings of namespaces used in the template. Django models must resided somewhere
+			in these namespaces. Must be declared either here or from within template.
 	"""
 
 	if namespace_mapping is None:
 		namespace_mapping = dict()
 
 	def define_namespace_mapping(mapping: Dict[str, str]) -> str:
-		""" Define namespace wrapping from within template """
+		"""
+			Define or update namespace mapping from within template.
+			:param mapping: mappings of namespaces used in the template. Django models must resided somewhere
+				in these namespaces.
+			:return: an empty string
+		"""
 		nonlocal namespace_mapping, namespace_mapping_reverse
 		namespace_mapping.update(mapping)
 		namespace_mapping_reverse = dict(zip(namespace_mapping.values(), namespace_mapping.keys()))
@@ -135,9 +142,10 @@ def format_template(
 	namespace_mapping_reverse = dict(zip(namespace_mapping.values(), namespace_mapping.keys()))
 
 	def kwargs(model: str) -> str:
-		""" Returns expanded kwarg string for model.
-		:param model: valid model identifier. Must be found within given namespace.
-		:raises RuntimeError: if a model cannot be found or a namespace cannot be imported
+		"""
+			Returns expanded kwarg string for model.
+			:param model: valid model identifier. Must be found within given namespace.
+			:raises RuntimeError: if a model cannot be found or a namespace cannot be imported
 		"""
 		nonlocal modules, kwarg_strs
 
