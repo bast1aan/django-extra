@@ -120,26 +120,25 @@ def format_template(
 			in these namespaces. Must be declared either here or from within template.
 	"""
 
-	if namespace_mapping is None:
-		namespace_mapping = dict()
-
-	def define_namespace_mapping(mapping: Dict[str, str]) -> str:
-		"""
-			Define or update namespace mapping from within template.
-			:param mapping: mappings of namespaces used in the template. Django models must resided somewhere
-				in these namespaces.
-			:return: an empty string
-		"""
-		nonlocal namespace_mapping, namespace_mapping_reverse
-		namespace_mapping.update(mapping)
-		namespace_mapping_reverse = dict(zip(namespace_mapping.values(), namespace_mapping.keys()))
-		return ''
-
 	modules:Set[str] = set()
 
 	kwarg_strs:Dict[str, str] = dict()
 
-	namespace_mapping_reverse = dict(zip(namespace_mapping.values(), namespace_mapping.keys()))
+	final_namespace_mapping:Dict[str, str] = dict()
+
+	final_namespace_mapping_reverse:Dict[str, str] = dict()
+
+	def define_namespace_mapping(namespace_mapping: Dict[str, str]) -> str:
+		"""
+			Define or update namespace mapping from within template.
+			:param namespace_mapping: mappings of namespaces used in the template. Django models must resided somewhere
+				in these namespaces.
+			:return: an empty string
+		"""
+		nonlocal final_namespace_mapping, final_namespace_mapping_reverse
+		final_namespace_mapping.update(namespace_mapping)
+		final_namespace_mapping_reverse = dict(zip(final_namespace_mapping.values(), final_namespace_mapping.keys()))
+		return ''
 
 	def kwargs(model: str) -> str:
 		"""
@@ -154,8 +153,8 @@ def format_template(
 			try:
 				# compute fqn
 				module_str, clazz = model.rsplit('.', maxsplit=1)
-				if module_str in namespace_mapping_reverse:
-					module_str = namespace_mapping_reverse[module_str]
+				if module_str in final_namespace_mapping_reverse:
+					module_str = final_namespace_mapping_reverse[module_str]
 				try:
 					module = importlib.import_module(module_str)
 					model_class = getattr(module, clazz)
@@ -175,7 +174,7 @@ def format_template(
 					)
 			except ValueError:
 				# no module mentioned in symbol. Find it.
-				for module_str, alias in namespace_mapping.items():
+				for module_str, alias in final_namespace_mapping.items():
 					if not alias:
 						try:
 							module = importlib.import_module(module_str)
@@ -189,22 +188,24 @@ def format_template(
 					raise RuntimeError('Model {model} cannot be found within given namespaces')
 
 			modules |= get_modules_for_model_kwargs(model_class)
-			kwarg_strs[model] = get_kwarg_str_for_model(model_class, namespace_mapping)
+			kwarg_strs[model] = get_kwarg_str_for_model(model_class, final_namespace_mapping)
 
 		return kwarg_strs[model]
+
+	if namespace_mapping is not None:
+		define_namespace_mapping(namespace_mapping)
 
 	# First run, so all kwargs() are executed and modules are found
 	_render_template(template_path, None, kwargs=kwargs, imports='', define_namespace_mapping=define_namespace_mapping)
 
-	# don't import the ones already mentioned in namespace_mapping
-	modules -= namespace_mapping.keys()
+	# don't import the ones already mentioned in final_namespace_mapping
+	modules -= final_namespace_mapping.keys()
 
 	# create imports string
 	imports = '\n'.join('import {}'.format(module) for module in modules)
 
 	# Second final run, including imports
-	_render_template(template_path, out_file,
-		kwargs=kwargs, imports=imports, define_namespace_mapping=lambda _: '')
+	_render_template(template_path, out_file, kwargs=kwargs, imports=imports, define_namespace_mapping=lambda _: '')
 
 
 def format_kwargs(
