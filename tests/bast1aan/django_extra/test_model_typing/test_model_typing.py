@@ -1,9 +1,19 @@
+"""
+	Input/output tests for bast1aan.model_typing public functions.
+
+	TODO: Add some validation to asure the generated templates are actually valid.
+	TODO: by either importing them as python code or running mypy on them.
+	TODO: that implies the output pyi file needs to be placed somewhere in a valid python namespace.
+
+"""
+
 import os
 import tempfile
 
 from django.test import SimpleTestCase
 from . import models
 from bast1aan.django_extra import model_typing
+
 
 class FormatKwargsTestCase(SimpleTestCase):
 
