@@ -510,3 +510,74 @@ def custom_upload_creation_func(custom_var1, custom_var2, **kwargs): ...
 			import2 = 'import datetime\n'
 
 			self.assertNotIn(import2, output)
+
+	def test_format_template_handles_fqn_model_namespace_correctly(self):
+		""" Ugly in this case, but for real scenarios handy, so it should work. """
+
+		template = """
+from typing import overload, Protocol
+import tests.bast1aan.django_extra.test_model_typing.models  # extra comment to make test work
+
+class Type1(Protocol): ...
+class Type2(Protocol): ...
+
+{{ imports }}
+
+@overload
+def custom_model_creation_func(custom_var1: Type1, custom_var2: Type2, {{ kwargs('tests.bast1aan.django_extra.test_model_typing.models.Model') }}) -> tests.bast1aan.django_extra.test_model_typing.models.Model:
+	...
+
+def custom_model_creation_func(custom_var1, custom_var2, **kwargs): ...
+
+@overload
+def custom_upload_creation_func(custom_var1: Type1, custom_var2: Type2, {{ kwargs('tests.bast1aan.django_extra.test_model_typing.models.Upload') }}) -> tests.bast1aan.django_extra.test_model_typing.models.Upload:
+	...
+
+def custom_upload_creation_func(custom_var1, custom_var2, **kwargs): ...
+"""
+
+		with tempfile.TemporaryDirectory(suffix='-test_model_typing') as tmpdir:
+			with open(os.path.join(tmpdir, 'my_template.pyi.j2'), 'wb') as f:
+				f.write(template.encode('utf-8'))
+
+			model_typing.format_template(
+				template_path=os.path.join(tmpdir, 'my_template.pyi.j2'),
+				out_file=os.path.join(tmpdir, 'my_template.pyi'),
+				namespace_mapping={'tests.bast1aan.django_extra.test_model_typing.models': 'tests.bast1aan.django_extra.test_model_typing.models'},
+			)
+
+			output = ''
+
+			with open(os.path.join(tmpdir, 'my_template.pyi'), 'rb') as f:
+				output = f.read().decode('utf-8')
+
+			code_line_model = \
+				'@overload\n' \
+				'def custom_model_creation_func(custom_var1: Type1, custom_var2: Type2, ' \
+				'id:int=None, title:str=None, slug:str=None, description:str=None, ' \
+				'poster:tests.bast1aan.django_extra.test_model_typing.models.Upload=None, ' \
+				'og_image:tests.bast1aan.django_extra.test_model_typing.models.Upload=None, ' \
+				'created_at:datetime.datetime=None, updated_at:datetime.datetime=None' \
+				') -> tests.bast1aan.django_extra.test_model_typing.models.Model:'
+
+			self.assertIn(code_line_model, output)
+
+			code_line_upload = \
+				'@overload\n' \
+				'def custom_upload_creation_func(custom_var1: Type1, custom_var2: Type2, ' \
+				'id:int=None, file:django.db.models.fields.files.FieldFile=None' \
+				') -> tests.bast1aan.django_extra.test_model_typing.models.Upload:'
+
+			self.assertIn(code_line_upload, output)
+
+			import1 = 'import django.db.models.fields.files\n'
+
+			self.assertIn(import1, output)
+
+			import2 = 'import datetime\n'
+
+			self.assertIn(import2, output)
+
+			import3 = 'import tests.bast1aan.django_extra.test_model_typing.models\n'
+
+			self.assertNotIn(import3, output)
